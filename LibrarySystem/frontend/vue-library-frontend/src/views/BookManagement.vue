@@ -353,16 +353,48 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-start; /* 左对齐，保持整齐 */
 }
+
+/* 统一按钮尺寸与样式 */
 .action-buttons .el-button {
-  padding: 6px 10px;
+  min-width: 74px; /* 统一宽度，文字不多时也能保持整齐 */
+  height: 34px; /* 统一高度 */
+  padding: 0 10px;
+  font-size: 13px;
+  border-radius: 6px; /* 圆角 */
+  box-shadow: none; /* 去掉默认可能的阴影，视觉更扁平 */
+}
+
+/* 小尺寸按钮内边距微调 */
+.action-buttons .el-button--small {
+  min-width: 68px;
+  height: 32px;
   font-size: 12px;
 }
-/* 窄屏时按钮换行，每行最多两个按钮，保证表格宽度不溢出 */
+
+/* 给每种类型的按钮微调颜色和边框（可保留 element-plus 的主题色，仅微调对比） */
+.action-buttons .el-button--primary {
+}
+.action-buttons .el-button--danger {
+}
+.action-buttons .el-button--success {
+}
+.action-buttons .el-button--warning {
+}
+.action-buttons .el-button--info {
+}
+
+/* 当按钮太多时，使用两列紧凑布局，保证单元格高度可控且整齐 */
 @media (max-width: 640px) {
+  .action-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
   .action-buttons .el-button {
-    flex: 1 1 calc(50% - 8px);
-    min-width: 110px;
+    width: 100%;
+    min-width: 0;
   }
 }
 </style>
