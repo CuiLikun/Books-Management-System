@@ -44,6 +44,13 @@ const actionForm = ref({
   due_date: '',
 })
 
+// 禁用今天之前的日期（只允许选择今天和未来）
+const disabledPastDate = (time) => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return time < today
+}
+
 // --- Computed Properties ---
 const dialogTitle = computed(() => {
   return formMode.value === 'add' ? '新增图书' : '编辑图书'
@@ -316,6 +323,7 @@ onMounted(() => {
             placeholder="请选择应还日期"
             value-format="YYYY-MM-DD"
             style="width: 100%"
+            :disabled-date="disabledPastDate"
           />
         </el-form-item>
       </el-form>
