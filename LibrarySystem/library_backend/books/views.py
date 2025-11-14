@@ -217,7 +217,7 @@ class BorrowBookAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class BorrowRecordListView(generics.ListAPIView):
-    queryset = BorrowRecord.objects.select_related('book').order_by('-borrow_date')
+    queryset = BorrowRecord.objects.select_related('book').order_by('borrow_date')
     serializer_class = BorrowRecordSerializer
 
 class ReturnBookAPIView(APIView):
@@ -249,7 +249,7 @@ class PurchaseRecordListView(generics.ListAPIView):
     """
     提供所有采购记录的列表。
     """
-    queryset = PurchaseRecord.objects.select_related('book').order_by('-purchase_date')
+    queryset = PurchaseRecord.objects.select_related('book').order_by('purchase_date')
     serializer_class = PurchaseRecordSerializer
 
 class DisposalRecordListView(generics.ListAPIView):
