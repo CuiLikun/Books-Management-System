@@ -256,5 +256,5 @@ class DisposalRecordListView(generics.ListAPIView):
     """
     提供所有淘汰记录的列表。
     """
-    queryset = DisposalRecord.objects.select_related('book').order_by('-disposal_date')
+    queryset = DisposalRecord.objects.select_related('book').order_by('disposal_date')
     serializer_class = DisposalRecordSerializer
