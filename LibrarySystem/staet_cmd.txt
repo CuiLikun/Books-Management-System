@@ -1,0 +1,9 @@
+http://127.0.0.1:8000/admin/
+http://127.0.0.1:8000/api/books/
+npm run dev
+python manage.py runserver
+cd \Projects\LibrarySystem\frontend\vue-library-frontend
+
+conda activate library_eny
+
+cd\Projects\LibrarySystem\library_backend
