@@ -60,9 +60,7 @@ class Migration(migrations.Migration):
                 ("due_date", models.DateField(verbose_name="应还日期")),
                 (
                     "return_date",
-                    models.DateField(
-                        blank=True, null=True, verbose_name="实际归还日期"
-                    ),
+                    models.DateField(blank=True, null=True, verbose_name="实际归还日期"),
                 ),
                 (
                     "status",

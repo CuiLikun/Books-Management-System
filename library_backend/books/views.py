@@ -4,45 +4,40 @@ from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import (
-    BookSerializer, 
-    BorrowRecordSerializer, 
-    PurchaseRecordSerializer, 
-    DisposalRecordSerializer
-)
+from .serializers import BookSerializer, BorrowRecordSerializer, PurchaseRecordSerializer, DisposalRecordSerializer
+
 
 # 这是一个非常重要的辅助函数，用于将数据库游标返回的结果转换成Python字典列表
 # 这样我们才能将结果传递给Serializer
 def dictfetchall(cursor):
     "Return all rows from a cursor as a dict"
     columns = [col[0] for col in cursor.description]
-    return [
-        dict(zip(columns, row))
-        for row in cursor.fetchall()
-    ]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
 
 # --- 核心CRUD视图 ---
 
+
 class BookListCreateAPIView(APIView):
     def get(self, request, *args, **kwargs):
-        """ 获取图书列表 (原生SQL SELECT) """
-        search_query = request.query_params.get('search', None)
+        """获取图书列表 (原生SQL SELECT)"""
+        search_query = request.query_params.get("search", None)
         sql = "SELECT * FROM books_book"
         params = []
         if search_query:
             sql += " WHERE title LIKE %s OR author LIKE %s OR isbn LIKE %s"
             search_term = f"%{search_query}%"
             params = [search_term, search_term, search_term]
-        
+
         with connection.cursor() as cursor:
             cursor.execute(sql, params)
             books = dictfetchall(cursor)
-        
+
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
-        """ 创建新书 (原生SQL INSERT) """
+        """创建新书 (原生SQL INSERT)"""
         serializer = BookSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
@@ -51,27 +46,32 @@ class BookListCreateAPIView(APIView):
                 VALUES (%s, %s, %s, %s, %s, %s)
             """
             params = [
-                data['title'], data['author'], data['publisher'],
-                data['isbn'], data['stock'], data['publication_date']
+                data["title"],
+                data["author"],
+                data["publisher"],
+                data["isbn"],
+                data["stock"],
+                data["publication_date"],
             ]
             with connection.cursor() as cursor:
                 cursor.execute(sql, params)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class BookDetailAPIView(APIView):
     def get(self, request, pk, *args, **kwargs):
-        """ 获取单本图书详情 (原生SQL SELECT) """
+        """获取单本图书详情 (原生SQL SELECT)"""
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM books_book WHERE id = %s", [pk])
             book = dictfetchall(cursor)
         if not book:
-            return Response({'error': '图书不存在'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "图书不存在"}, status=status.HTTP_404_NOT_FOUND)
         serializer = BookSerializer(book[0])
         return Response(serializer.data)
 
     def put(self, request, pk, *args, **kwargs):
-        """ 更新图书 (原生SQL UPDATE) """
+        """更新图书 (原生SQL UPDATE)"""
         serializer = BookSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
@@ -81,8 +81,13 @@ class BookDetailAPIView(APIView):
                 WHERE id = %s
             """
             params = [
-                data['title'], data['author'], data['publisher'], data['isbn'],
-                data['stock'], data['publication_date'], pk
+                data["title"],
+                data["author"],
+                data["publisher"],
+                data["isbn"],
+                data["stock"],
+                data["publication_date"],
+                pk,
             ]
             with connection.cursor() as cursor:
                 cursor.execute(sql, params)
@@ -90,25 +95,29 @@ class BookDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, *args, **kwargs):
-        """ 删除图书 (原生SQL DELETE) """
+        """删除图书 (原生SQL DELETE)"""
         with connection.cursor() as cursor:
             # execute返回受影响的行数，可以用来判断是否删除成功
             rows_affected = cursor.execute("DELETE FROM books_book WHERE id = %s", [pk])
         if rows_affected == 0:
-            return Response({'error': '图书不存在，无法删除'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "图书不存在，无法删除"}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 # --- 业务操作视图 ---
 
+
 class PurchaseBookAPIView(APIView):
-    """ 采购入库 (原生SQL UPDATE + INSERT) """
+    """采购入库 (原生SQL UPDATE + INSERT)"""
+
     def post(self, request, pk, *args, **kwargs):
         try:
-            quantity = int(request.data.get('quantity'))
-            if quantity <= 0: raise ValueError
+            quantity = int(request.data.get("quantity"))
+            if quantity <= 0:
+                raise ValueError
         except (ValueError, TypeError):
-            return Response({'error': '数量必须是正整数'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({"error": "数量必须是正整数"}, status=status.HTTP_400_BAD_REQUEST)
+
         with connection.cursor() as cursor:
             # 使用事务确保两步操作要么都成功，要么都失败
             cursor.execute("START TRANSACTION")
@@ -118,29 +127,31 @@ class PurchaseBookAPIView(APIView):
                 updated_rows = cursor.execute(update_sql, [quantity, pk])
                 if updated_rows == 0:
                     raise Exception("Book not found")
-                
+
                 # 2. 创建采购记录
                 insert_sql = "INSERT INTO books_purchaserecord (book_id, quantity, purchase_date, operator_name) VALUES (%s, %s, CURDATE(), %s)"
-                cursor.execute(insert_sql, [pk, quantity, 'admin'])
-                
+                cursor.execute(insert_sql, [pk, quantity, "admin"])
+
                 cursor.execute("COMMIT")
             except Exception as e:
                 cursor.execute("ROLLBACK")
-                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
             # 返回更新后的图书信息
             cursor.execute("SELECT * FROM books_book WHERE id = %s", [pk])
             book = dictfetchall(cursor)
         serializer = BookSerializer(book[0])
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 class DisposalBookAPIView(APIView):
-    """ 淘汰出库 (原生SQL SELECT + UPDATE + INSERT) """
+    """淘汰出库 (原生SQL SELECT + UPDATE + INSERT)"""
+
     def post(self, request, pk, *args, **kwargs):
         # ... (验证quantity和reason的逻辑与之前相同) ...
-        quantity = int(request.data.get('quantity'))
-        reason = request.data.get('reason', '')
-        
+        quantity = int(request.data.get("quantity"))
+        reason = request.data.get("reason", "")
+
         with connection.cursor() as cursor:
             cursor.execute("START TRANSACTION")
             try:
@@ -152,26 +163,31 @@ class DisposalBookAPIView(APIView):
 
                 # 2. 更新库存
                 cursor.execute("UPDATE books_book SET stock = stock - %s WHERE id = %s", [quantity, pk])
-                
+
                 # 3. 创建淘汰记录
-                cursor.execute("INSERT INTO books_disposalrecord (book_id, quantity, reason, disposal_date, operator_name) VALUES (%s, %s, %s, CURDATE(), %s)", [pk, quantity, reason, 'admin'])
-                
+                cursor.execute(
+                    "INSERT INTO books_disposalrecord (book_id, quantity, reason, disposal_date, operator_name) VALUES (%s, %s, %s, CURDATE(), %s)",
+                    [pk, quantity, reason, "admin"],
+                )
+
                 cursor.execute("COMMIT")
             except Exception as e:
                 cursor.execute("ROLLBACK")
-                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
             cursor.execute("SELECT * FROM books_book WHERE id = %s", [pk])
             book = dictfetchall(cursor)
         serializer = BookSerializer(book[0])
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 class BorrowBookAPIView(APIView):
-    """ 借阅图书 (原生SQL SELECT + UPDATE + INSERT) """
+    """借阅图书 (原生SQL SELECT + UPDATE + INSERT)"""
+
     def post(self, request, pk, *args, **kwargs):
         # ... (验证 borrower_name 和 due_date 的逻辑与之前相同) ...
-        borrower_name = request.data.get('borrower_name')
-        due_date = request.data.get('due_date')
+        borrower_name = request.data.get("borrower_name")
+        due_date = request.data.get("due_date")
 
         with connection.cursor() as cursor:
             cursor.execute("START TRANSACTION")
@@ -181,26 +197,28 @@ class BorrowBookAPIView(APIView):
                 current_stock = cursor.fetchone()
                 if not current_stock or current_stock[0] <= 0:
                     raise Exception("本书已无库存，无法借阅")
-                
+
                 # 2. 更新库存
                 cursor.execute("UPDATE books_book SET stock = stock - 1 WHERE id = %s", [pk])
 
                 # 3. 创建借阅记录
                 sql = "INSERT INTO books_borrowrecord (book_id, borrower_name, borrow_date, due_date, status) VALUES (%s, %s, CURDATE(), %s, %s)"
-                cursor.execute(sql, [pk, borrower_name, due_date, 'borrowed'])
-                
+                cursor.execute(sql, [pk, borrower_name, due_date, "borrowed"])
+
                 cursor.execute("COMMIT")
             except Exception as e:
                 cursor.execute("ROLLBACK")
-                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
             cursor.execute("SELECT * FROM books_book WHERE id = %s", [pk])
             book = dictfetchall(cursor)
         serializer = BookSerializer(book[0])
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 class ReturnBookAPIView(APIView):
-    """ 归还图书 (原生SQL UPDATE + UPDATE) """
+    """归还图书 (原生SQL UPDATE + UPDATE)"""
+
     def post(self, request, pk, *args, **kwargs):
         with connection.cursor() as cursor:
             cursor.execute("START TRANSACTION")
@@ -211,25 +229,29 @@ class ReturnBookAPIView(APIView):
                 record = cursor.fetchone()
                 if not record:
                     raise Exception("该借阅记录不存在或已归还")
-                
+
                 book_id = record[0]
 
                 # 2. 更新借阅记录
-                update_record_sql = "UPDATE books_borrowrecord SET status = 'returned', return_date = CURDATE() WHERE id = %s"
+                update_record_sql = (
+                    "UPDATE books_borrowrecord SET status = 'returned', return_date = CURDATE() WHERE id = %s"
+                )
                 cursor.execute(update_record_sql, [pk])
 
                 # 3. 对应图书库存+1
                 update_book_sql = "UPDATE books_book SET stock = stock + 1 WHERE id = %s"
                 cursor.execute(update_book_sql, [book_id])
-                
+
                 cursor.execute("COMMIT")
             except Exception as e:
                 cursor.execute("ROLLBACK")
-                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({'status': 'success'}, status=status.HTTP_200_OK)
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"status": "success"}, status=status.HTTP_200_OK)
+
 
 # --- 历史记录查询视图 (SELECT) ---
+
 
 class BorrowRecordListView(APIView):
     def get(self, request, *args, **kwargs):
@@ -243,13 +265,14 @@ class BorrowRecordListView(APIView):
         with connection.cursor() as cursor:
             cursor.execute(sql)
             records = dictfetchall(cursor)
-        
+
         # 为了适配前端期望的 { book: { title: '...' } } 格式，需要手动处理一下
         for record in records:
-            record['book'] = {'title': record.pop('book_title')}
+            record["book"] = {"title": record.pop("book_title")}
 
         serializer = BorrowRecordSerializer(records, many=True)
         return Response(serializer.data)
+
 
 class PurchaseRecordListView(APIView):
     def get(self, request, *args, **kwargs):
@@ -262,12 +285,13 @@ class PurchaseRecordListView(APIView):
         with connection.cursor() as cursor:
             cursor.execute(sql)
             records = dictfetchall(cursor)
-        
+
         for record in records:
-            record['book'] = {'title': record.pop('book_title')}
+            record["book"] = {"title": record.pop("book_title")}
 
         serializer = PurchaseRecordSerializer(records, many=True)
         return Response(serializer.data)
+
 
 class DisposalRecordListView(APIView):
     def get(self, request, *args, **kwargs):
@@ -282,13 +306,14 @@ class DisposalRecordListView(APIView):
             records = dictfetchall(cursor)
 
         for record in records:
-            record['book'] = {'title': record.pop('book_title')}
+            record["book"] = {"title": record.pop("book_title")}
 
         serializer = DisposalRecordSerializer(records, many=True)
         return Response(serializer.data)
 
 
 # --- 统计视图 (复杂的聚合查询) ---
+
 
 class StatisticsAPIView(APIView):
     def get(self, request, *args, **kwargs):
@@ -332,21 +357,19 @@ class StatisticsAPIView(APIView):
             borrow_trends = cursor.fetchall()
 
         data = {
-            'summary': {
-                'total_book_types': summary_totals[0] or 0,
-                'total_stock': int(summary_totals[1]) if summary_totals[1] else 0,
-                'current_borrowed_count': current_borrowed_count[0] or 0,
+            "summary": {
+                "total_book_types": summary_totals[0] or 0,
+                "total_stock": int(summary_totals[1]) if summary_totals[1] else 0,
+                "current_borrowed_count": current_borrowed_count[0] or 0,
             },
-            'top_5_borrowed': {
-                'labels': [item[0] for item in top_5_borrowed_books],
-                'values': [item[1] for item in top_5_borrowed_books],
+            "top_5_borrowed": {
+                "labels": [item[0] for item in top_5_borrowed_books],
+                "values": [item[1] for item in top_5_borrowed_books],
             },
-            'publisher_distribution': [
-                {'name': item[0], 'value': item[1]} for item in publisher_distribution
-            ],
-            'borrow_trends': {
-                'labels': [item[0] for item in borrow_trends],
-                'values': [item[1] for item in borrow_trends],
-            }
+            "publisher_distribution": [{"name": item[0], "value": item[1]} for item in publisher_distribution],
+            "borrow_trends": {
+                "labels": [item[0] for item in borrow_trends],
+                "values": [item[1] for item in borrow_trends],
+            },
         }
         return Response(data)

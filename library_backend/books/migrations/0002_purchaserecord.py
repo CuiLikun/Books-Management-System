@@ -30,9 +30,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "operator_name",
-                    models.CharField(
-                        default="admin", max_length=50, verbose_name="操作员"
-                    ),
+                    models.CharField(default="admin", max_length=50, verbose_name="操作员"),
                 ),
                 (
                     "book",
