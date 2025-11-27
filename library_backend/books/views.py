@@ -348,7 +348,7 @@ class StatisticsAPIView(APIView):
 
             # 4. 每月借阅趋势
             trends_sql = """
-                SELECT DATE_FORMAT(borrow_date, '%%Y-%%m') as month, COUNT(id) as count
+                SELECT DATE_FORMAT(borrow_date, '%Y-%m') as month, COUNT(id) as count
                 FROM books_borrowrecord
                 GROUP BY month
                 ORDER BY month
