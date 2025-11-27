@@ -7,3 +7,7 @@ cd \Projects\LibrarySystem\frontend\vue-library-frontend
 conda activate library_eny
 
 cd\Projects\LibrarySystem\library_backend
+
+
+查看djiango反编译得到的sql语言
+python manage.py sqlmigrate books 0001_initial
