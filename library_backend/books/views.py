@@ -95,12 +95,39 @@ class BookDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, *args, **kwargs):
-        """删除图书 (原生SQL DELETE)"""
+        """删除图书 (原生SQL 级联删除)"""
         with connection.cursor() as cursor:
-            # execute返回受影响的行数，可以用来判断是否删除成功
-            rows_affected = cursor.execute("DELETE FROM books_book WHERE id = %s", [pk])
+            # 开启事务
+            cursor.execute("START TRANSACTION")
+            try:
+                # --- 关键步骤：先删除所有关联的子记录 ---
+
+                # 1. 删除关联的【采购记录】
+                cursor.execute("DELETE FROM books_purchaserecord WHERE book_id = %s", [pk])
+
+                # 2. 删除关联的【借阅记录】
+                cursor.execute("DELETE FROM books_borrowrecord WHERE book_id = %s", [pk])
+
+                # 3. 删除关联的【淘汰记录】
+                cursor.execute("DELETE FROM books_disposalrecord WHERE book_id = %s", [pk])
+
+                # --- 最后步骤：删除图书本身 ---
+
+                # 4. 删除图书
+                rows_affected = cursor.execute("DELETE FROM books_book WHERE id = %s", [pk])
+
+                # 5. 提交事务 (这一步如果不写，删除不会生效)
+                cursor.execute("COMMIT")
+
+            except Exception as e:
+                # 发生错误回滚
+                cursor.execute("ROLLBACK")
+                print(f"删除失败原因: {str(e)}")  # 在后台打印错误日志方便调试
+                return Response({"error": f"删除失败: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
         if rows_affected == 0:
             return Response({"error": "图书不存在，无法删除"}, status=status.HTTP_404_NOT_FOUND)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

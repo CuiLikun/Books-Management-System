@@ -10,7 +10,7 @@ cd \Projects\LibrarySystem\frontend\vue-library-frontend
 npm run dev
 二，后端
 1.后端python环境
-conda activate library_eny
+conda activate library_env
 2.后端路径
 cd\Projects\LibrarySystem\library_backend
 3.后端开始
