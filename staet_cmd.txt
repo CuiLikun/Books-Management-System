@@ -1,13 +1,22 @@
 http://127.0.0.1:8000/admin/
 http://127.0.0.1:8000/api/books/
-npm run dev
-python manage.py runserver
+
+
+
+一，前端
+1.前端路径
 cd \Projects\LibrarySystem\frontend\vue-library-frontend
-
+2.前端开始
+npm run dev
+二，后端
+1.后端python环境
 conda activate library_eny
-
+2.后端路径
 cd\Projects\LibrarySystem\library_backend
+3.后端开始
+python manage.py runserver
+
 
 
 查看djiango反编译得到的sql语言
-python manage.py sqlmigrate books 0001_initial
+python manage.py sqlmigrate books 0001_initial（例如查看建表的原生sql语言）
