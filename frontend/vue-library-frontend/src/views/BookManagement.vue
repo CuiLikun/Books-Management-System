@@ -248,8 +248,8 @@ onMounted(() => {
     <!-- 图书列表表格 -->
     <div class="table-wrapper">
       <el-table :data="tableData" stripe border style="width: 100%" size="small">
-        <!-- 使用表格内置索引列，基于当前数据顺序显示行号，删除后会自动重排 -->
-        <el-table-column type="index" label="ID" width="60" />
+        <!-- 显示数据库中 books_book 表对应的 id 字段（而不是表格行号） -->
+        <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="title" label="书名" />
         <el-table-column prop="author" label="作者" />
         <el-table-column prop="publisher" label="出版社" />
